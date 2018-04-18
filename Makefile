@@ -1,6 +1,6 @@
 
 CXX=icpc
-CXXFLAGS=-O3 -mkl -std=c++11
+CXXFLAGS=-qopt-streaming-stores always -O3 -xCORE-AVX512 -mkl -std=c++11
 
 
 dgemm: dgemm.cpp

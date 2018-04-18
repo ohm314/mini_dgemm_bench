@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 
   alpha = 1.0;
   beta = 1.0;
-  m = 2000, k = 200, n = 1000;
+  m = 8000, k = 8192, n = 8192;
 
   double gflop = (2.0*m*k*n)*1e-9*niter;
 
