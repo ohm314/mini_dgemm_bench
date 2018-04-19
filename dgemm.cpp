@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
 
   omp_set_max_active_levels(2);
 
-  double gflop = (2.0*m*k*n)*1e-9*niter;
+  double gflop = (2.0*m*k*n)*1e-9*niter*nthreads;
 
   auto As = (double**)malloc(nthreads*sizeof(double*));
   auto Bs = (double**)malloc(nthreads*sizeof(double*));
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     Bs[ithrd] = B;
     Cs[ithrd] = C;
   }
-  #pragma omp parallel for schedule(static)
+  #pragma omp parallel for schedule(static,1) num_threads(2)
   for (int ithrd = 0; ithrd < nthreads; ithrd++) {
     auto A = As[ithrd];
     auto B = Bs[ithrd];
@@ -56,14 +56,14 @@ int main(int argc, char **argv) {
     }
   }
 
-  #pragma omp parallel for schedule(static)
+  #pragma omp parallel for schedule(static, 1) num_threads(2)
   for (int ithrd = 0; ithrd < nthreads; ithrd++) {
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 m, n, k, alpha, As[ithrd], k, Bs[ithrd], n, beta, Cs[ithrd], n);
   }
 
   auto tstart = std::chrono::high_resolution_clock::now();
-  #pragma omp parallel for schedule(static)
+  #pragma omp parallel for schedule(static, 1) num_threads(2)
   for (int ithrd = 0; ithrd < nthreads; ithrd++) {
     for (int iter = 0; iter < niter; iter++) {
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
