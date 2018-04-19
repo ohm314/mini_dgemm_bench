@@ -11,7 +11,8 @@ int main(int argc, char **argv) {
   double alpha, beta;
   int m, n, k;
   int niter = 100;
-  int nthreads = 2;
+  int nthreads = omp_get_max_threads();
+  std::cout << "Running with " << nthreads << " outer threads\n"; 
   alpha = 1.0;
   beta = 1.0;
   m = 8000;
@@ -40,7 +41,8 @@ int main(int argc, char **argv) {
     Bs[ithrd] = B;
     Cs[ithrd] = C;
   }
-  #pragma omp parallel for schedule(static,1) num_threads(2)
+
+  #pragma omp parallel for schedule(static,1) num_threads(nthreads)
   for (int ithrd = 0; ithrd < nthreads; ithrd++) {
     auto A = As[ithrd];
     auto B = Bs[ithrd];
@@ -56,14 +58,14 @@ int main(int argc, char **argv) {
     }
   }
 
-  #pragma omp parallel for schedule(static, 1) num_threads(2)
+  #pragma omp parallel for schedule(static, 1) num_threads(nthreads)
   for (int ithrd = 0; ithrd < nthreads; ithrd++) {
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 m, n, k, alpha, As[ithrd], k, Bs[ithrd], n, beta, Cs[ithrd], n);
   }
 
   auto tstart = std::chrono::high_resolution_clock::now();
-  #pragma omp parallel for schedule(static, 1) num_threads(2)
+  #pragma omp parallel for schedule(static, 1) num_threads(nthreads)
   for (int ithrd = 0; ithrd < nthreads; ithrd++) {
     for (int iter = 0; iter < niter; iter++) {
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
@@ -79,22 +81,27 @@ int main(int argc, char **argv) {
 #ifdef DBG_PRINT
   for(int i = 0; i < min(m, 5); ++i) {
     for(int j = 0; j < min(n, 5); ++j) {
-      std::cout << C[j + i*n] << "  ";
+      std::cout << Cs[0][j + i*n] << "  ";
     }
     std::cout << std::endl;
   }
+#endif
+
   double chk;
   double sgn = 1.0;
-  for(int i = 0; i < m*n; ++i) {
-    sgn *= -1.0;
-    chk += sgn*C[i];
+  for(int j = 0; j < nthreads; j++) { 
+    for(int i = 0; i < m*n; ++i) {
+      sgn *= -1.0;
+      chk += sgn*Cs[j][i];
+    }
   }
   std::cout << "Check value: " << chk << std::endl;
 
-  mkl_free(A);
-  mkl_free(B);
-  mkl_free(C);
+  for(int j = 0; j < 2; j++) { 
+    mkl_free(As[j]);
+    mkl_free(Bs[j]);
+    mkl_free(Cs[j]);
+  }
 
-#endif
   return 0;
 }
