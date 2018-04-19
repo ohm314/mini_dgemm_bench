@@ -53,12 +53,21 @@ int main(int argc, char **argv) {
   std::cout << "Time elapsed for " << niter << " iterations: " << tdiff.count() << "s\n";
   std::cout << gflop/tdiff.count() << " GFLOP/s\n";
 
+#ifdef DBG_PRINT
   for(int i = 0; i < min(m, 5); ++i) {
     for(int j = 0; j < min(n, 5); ++j) {
       std::cout << C[j + i*n] << "  ";
     }
     std::cout << std::endl;
   }
+#endif
+  double chk;
+  double sgn = 1.0;
+  for(int i = 0; i < m*n; ++i) {
+    sgn *= -1.0;
+    chk += sgn*C[i];
+  }
+  std::cout << "Check value: " << chk << std::endl;
 
   mkl_free(A);
   mkl_free(B);
