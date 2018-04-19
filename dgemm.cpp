@@ -2,6 +2,7 @@
 #include <chrono>
 #include "mkl.h"
 
+#define fix_lda(x)   (((x + 255) & ~255) + 16)
 #define min(x,y) (((x) < (y)) ? (x) : (y))
 
 int main(int argc, char **argv) {
@@ -12,7 +13,9 @@ int main(int argc, char **argv) {
 
   alpha = 1.0;
   beta = 1.0;
-  m = 8000, k = 8192, n = 8192;
+  m = 8000;
+  k = fix_lda(4096);
+  n = fix_lda(4096);
 
   double gflop = (2.0*m*k*n)*1e-9*niter;
 
