@@ -3,21 +3,29 @@
 #include "mkl.h"
 #include "omp.h"
 
-
 #define fix_lda(x)   (((x + 255) & ~255) + 16)
 #define min(x,y) (((x) < (y)) ? (x) : (y))
+
+#define ALPHA 1.0
+#define BETA 1.0
+#define NITER 100
+#define DIM_M 8000
+#define DIM_K 4096
+#define DIM_N 4096
 
 int main(int argc, char **argv) {
   double alpha, beta;
   int m, n, k;
-  int niter = 100;
+  int niter = NITER;
   int nthreads = omp_get_max_threads();
-  std::cout << "Running with " << nthreads << " outer threads\n"; 
-  alpha = 1.0;
-  beta = 1.0;
-  m = 8000;
-  k = fix_lda(4096);
-  n = fix_lda(4096);
+#ifdef DBG_PRINT
+  std::cout << "Running with " << nthreads << " outer threads\n";
+#endif
+  alpha = ALPHA;
+  beta = BETA;
+  m = DIM_M;
+  k = fix_lda(DIM_K);
+  n = fix_lda(DIM_N);
 
   omp_set_max_active_levels(2);
 
@@ -89,7 +97,7 @@ int main(int argc, char **argv) {
 
   double chk;
   double sgn = 1.0;
-  for(int j = 0; j < nthreads; j++) { 
+  for(int j = 0; j < nthreads; j++) {
     for(int i = 0; i < m*n; ++i) {
       sgn *= -1.0;
       chk += sgn*Cs[j][i];
@@ -97,11 +105,14 @@ int main(int argc, char **argv) {
   }
   std::cout << "Check value: " << chk << std::endl;
 
-  for(int j = 0; j < 2; j++) { 
+  for(int j = 0; j < 2; j++) {
     mkl_free(As[j]);
     mkl_free(Bs[j]);
     mkl_free(Cs[j]);
   }
+  free(As);
+  free(Bs);
+  free(Cs);
 
   return 0;
 }
