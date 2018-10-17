@@ -15,7 +15,7 @@
 
 int main(int argc, char **argv) {
   double alpha, beta;
-  int m, n, k;
+  size_t m, n, k;
   int niter = NITER;
   int nthreads = omp_get_max_threads();
 #ifdef DBG_PRINT
@@ -29,8 +29,7 @@ int main(int argc, char **argv) {
 
   omp_set_max_active_levels(2);
 
-  double gflop = (2.0*m*k*n)*1e-9*niter*nthreads;
-
+  double gflop = (m*n*(2.0*k+2.0))*1e-9*niter*nthreads;
   auto As = (double**)malloc(nthreads*sizeof(double*));
   auto Bs = (double**)malloc(nthreads*sizeof(double*));
   auto Cs = (double**)malloc(nthreads*sizeof(double*));
@@ -55,13 +54,13 @@ int main(int argc, char **argv) {
     auto A = As[ithrd];
     auto B = Bs[ithrd];
     auto C = Cs[ithrd];
-    for(int i = 0; i < m*k; ++i) {
+    for(size_t i = 0; i < m*k; ++i) {
       A[i] = 1.1*(i+1);
     }
-    for(int i = 0; i < k*n; ++i) {
+    for(size_t i = 0; i < k*n; ++i) {
       B[i] = 1.2*(i+2);
     }
-    for(int i = 0; i < m*n; ++i) {
+    for(size_t i = 0; i < m*n; ++i) {
       C[i] = 0.0;
     }
   }
@@ -69,7 +68,8 @@ int main(int argc, char **argv) {
   #pragma omp parallel for schedule(static, 1) num_threads(nthreads)
   for (int ithrd = 0; ithrd < nthreads; ithrd++) {
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                m, n, k, alpha, As[ithrd], k, Bs[ithrd], n, beta, Cs[ithrd], n);
+                m, n, k, alpha, As[ithrd], k, Bs[ithrd], n,
+                beta, Cs[ithrd], n);
   }
 
   auto tstart = std::chrono::high_resolution_clock::now();
@@ -77,7 +77,8 @@ int main(int argc, char **argv) {
   for (int ithrd = 0; ithrd < nthreads; ithrd++) {
     for (int iter = 0; iter < niter; iter++) {
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                  m, n, k, alpha, As[ithrd], k, Bs[ithrd], n, beta, Cs[ithrd], n);
+                  m, n, k, alpha, As[ithrd], k, Bs[ithrd], n,
+                  beta, Cs[ithrd], n);
     }
   }
   auto tend = std::chrono::high_resolution_clock::now();
@@ -97,18 +98,17 @@ int main(int argc, char **argv) {
 
   double chk;
   double sgn = 1.0;
-  for(int j = 0; j < nthreads; j++) {
+  for(int ithrd = 0; ithrd < nthreads; ithrd++) {
     for(int i = 0; i < m*n; ++i) {
       sgn *= -1.0;
-      chk += sgn*Cs[j][i];
+      chk += sgn*Cs[ithrd][i];
     }
   }
   std::cout << "Check value: " << chk << std::endl;
-
-  for(int j = 0; j < 2; j++) {
-    mkl_free(As[j]);
-    mkl_free(Bs[j]);
-    mkl_free(Cs[j]);
+  for(int ithrd = 0; ithrd < nthreads; ithrd++) {
+    mkl_free(As[ithrd]);
+    mkl_free(Bs[ithrd]);
+    mkl_free(Cs[ithrd]);
   }
   free(As);
   free(Bs);
